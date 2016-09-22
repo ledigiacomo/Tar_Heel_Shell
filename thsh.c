@@ -1,18 +1,25 @@
 /* COMP 530: Tar Heel SHell */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 // Assume no input line will be longer than 1024 bytes
 #define MAX_INPUT 1024
+#define MAX_PATH_LEN 4096
+  
+struct stat filestat;
+
+void execute(char* path);
+int checkCmd(char* cmd);
 
 int main(int argc, char ** argv, char **envp) 
 {
   int finished = 0;
   char *prompt = "thsh> ";
   char cmd[MAX_INPUT];
-
 
   while (!finished) 
   {
@@ -31,19 +38,15 @@ int main(int argc, char ** argv, char **envp)
     }
     
     // read and parse the input
-    for(rv = 1, count = 0, 
-	  cursor = cmd, last_char = 1;
-	rv 
-	  && (++count < (MAX_INPUT-1))
-	  && (last_char != '\n');
-	cursor++) { 
-
+    for(rv = 1, count = 0, cursor = cmd, last_char = 1; rv && (++count < (MAX_INPUT-1)) && (last_char != '\n'); cursor++) 
+    { 
       rv = read(0, cursor, 1);
       last_char = *cursor;
     } 
     *cursor = '\0';
 
-    if (!rv) { 
+    if (!rv) 
+    { 
       finished = 1;
       break;
     }
@@ -52,8 +55,48 @@ int main(int argc, char ** argv, char **envp)
     // Execute the command, handling built-in commands separately 
     // Just echo the command line for now
     write(1, cmd, strnlen(cmd, MAX_INPUT));
+    checkCmd(cmd);
 
   }
 
   return 0;
+}
+
+int checkCmd(char* cmd)
+{
+	//not search path
+	if(cmd[0] == '\\')
+	{
+    printf("in not search path\n");
+		stat(cmd, &filestat);
+	}
+
+	//search PATH
+	else 
+	{
+  	char* path = getenv("PATH");
+    printf("Path: %s", path);
+		char* pathI = malloc(MAX_PATH_LEN * sizeof(char));
+
+		//tokenize path along ':' and concantenate '/' and the inputed cmd to it, then check to see if a file at this path exists
+		//if it does call execute on that path
+    char* token = strtok(path, ";");
+		while(token != NULL)
+		{
+      sprintf(pathI, "%s\\%s\0", token, cmd);
+      printf("Pathi: %s\n", pathI);
+      if(stat(pathI, &filestat) == 0)
+      {
+        execute(pathI);
+        break;
+      }
+      token = strtok(NULL, ":");
+      pathI[0]='\0';
+		}
+	}
+}
+
+void execute(char* path)
+{
+	printf("executed: %s", path);
 }
