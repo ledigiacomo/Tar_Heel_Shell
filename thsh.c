@@ -21,16 +21,19 @@ int main(int argc, char ** argv, char **envp)
   int finished = 0;
   char *prompt = "thsh> ";
   char cmd[MAX_INPUT];
+  char* pwd = getenv("PWD");
 
   while (!finished) 
   {
-    char *cursor;
+    char *cursor; 
     char last_char;
     int rv;
     int count;
 
-    // Print the prompt
-    rv = write(1, prompt, strlen(prompt));
+    // Print the prompt and PWD
+    char* pwdPrompt = malloc((strlen(pwd)+strlen(prompt)+3)*sizeof(char));
+    sprintf(pwdPrompt, "[%s] %s", pwd, prompt);
+    rv = write(1, pwdPrompt, strlen(pwdPrompt));
     if (!rv) 
     { 
       finished = 1;
@@ -70,6 +73,12 @@ int checkCmd(char* cmd)
   if(strcmp(cmd, "exit") == 0)
   {
     exit(3);
+  }
+
+  //not finished
+  else if(strcmp(cmd, "cd") == 0)
+  {
+    //chdir(arg[0]);
   }
 
 	//not search path
