@@ -9,7 +9,8 @@
 // Assume no input line will be longer than 1024 bytes
 #define MAX_INPUT 1024
 #define MAX_PATH_LEN 4096
-  
+#define pathGLBL getenv("PATH")
+
 struct stat filestat;
 
 void execute(char* path);
@@ -27,7 +28,6 @@ int main(int argc, char ** argv, char **envp)
     char last_char;
     int rv;
     int count;
-
 
     // Print the prompt
     rv = write(1, prompt, strlen(prompt));
@@ -64,7 +64,9 @@ int main(int argc, char ** argv, char **envp)
 
 int checkCmd(char* cmd)
 {
-  cmd[strlen(cmd)-1]='\0';
+  if(cmd[strlen(cmd)-1] == '\n')
+    cmd[strlen(cmd)-1]='\0';
+
   if(strcmp(cmd, "exit") == 0)
   {
     exit(3);
@@ -80,8 +82,10 @@ int checkCmd(char* cmd)
 	//search PATH
 	else 
 	{
-  	char* path = getenv("PATH");
-    printf("Path: %s", path);
+    printf("Global path: %s\n", pathGLBL);
+  	char* path = malloc(strlen(pathGLBL)*sizeof(char));
+    strcpy(path, pathGLBL);
+    printf("Path: %s\n", path);
 		char* pathI = malloc(MAX_PATH_LEN * sizeof(char));
 
 		//tokenize path along ':' and concantenate '/' and the inputed cmd to it, then check to see if a file at this path exists
@@ -94,8 +98,6 @@ int checkCmd(char* cmd)
       printf("Stat: %d\n", stat(pathI, &filestat));
       if(stat(pathI, &filestat) == 0)
       {
-        printf("in stat con");
-        fflush(stdout);
         execute(pathI);
         break;
       }
@@ -107,29 +109,23 @@ int checkCmd(char* cmd)
 
 void execute(char* path)
 {
-  printf("executing: %s", path);
-  // int stat;
-  // pid = fork();
-  // if(pid == 0)
-  // {
-  //   if(execvp(*arg, arg) < 0)
-  //   {
-  //     printf("ERROR in execvp");
-  //     exit(1);
-  //   }
+  int status;
+  int pid = fork();
+  if(pid == 0)
+  {
+    status = execl(path, path, (char*) NULL);
+  }
 
-  //   else if(pid < 0)
-  //     printf("ERORR from pid");
-
-  //   else 
-  //   {
-  //     while(1)
-  //     {
-  //       if(wait(&stat)==pid)
-  //         break;
-  //     }
-  //   }
-  // }
-
-  // return 1;
+  else
+  {
+    while(1)
+    {
+      if(wait(&status >= 0))
+        break;
+    }
+  }
 }
+
+
+
+//fflush(stdout);
