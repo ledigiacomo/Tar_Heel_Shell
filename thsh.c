@@ -64,8 +64,14 @@ int main(int argc, char ** argv, char **envp)
 
 int checkCmd(char* cmd)
 {
+  cmd[strlen(cmd)-1]='\0';
+  if(strcmp(cmd, "exit") == 0)
+  {
+    exit(3);
+  }
+
 	//not search path
-	if(cmd[0] == '\\')
+	else if(cmd[0] == '\\')
 	{
     printf("in not search path\n");
 		stat(cmd, &filestat);
@@ -80,13 +86,16 @@ int checkCmd(char* cmd)
 
 		//tokenize path along ':' and concantenate '/' and the inputed cmd to it, then check to see if a file at this path exists
 		//if it does call execute on that path
-    char* token = strtok(path, ";");
+    char* token = strtok(path, ":");
 		while(token != NULL)
 		{
-      sprintf(pathI, "%s\\%s\0", token, cmd);
+      sprintf(pathI, "%s/%s", token, cmd);
       printf("Pathi: %s\n", pathI);
+      printf("Stat: %d\n", stat(pathI, &filestat));
       if(stat(pathI, &filestat) == 0)
       {
+        printf("in stat con");
+        fflush(stdout);
         execute(pathI);
         break;
       }
@@ -98,5 +107,29 @@ int checkCmd(char* cmd)
 
 void execute(char* path)
 {
-	printf("executed: %s", path);
+  printf("executing: %s", path);
+  // int stat;
+  // pid = fork();
+  // if(pid == 0)
+  // {
+  //   if(execvp(*arg, arg) < 0)
+  //   {
+  //     printf("ERROR in execvp");
+  //     exit(1);
+  //   }
+
+  //   else if(pid < 0)
+  //     printf("ERORR from pid");
+
+  //   else 
+  //   {
+  //     while(1)
+  //     {
+  //       if(wait(&stat)==pid)
+  //         break;
+  //     }
+  //   }
+  // }
+
+  // return 1;
 }
