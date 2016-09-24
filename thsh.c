@@ -9,7 +9,9 @@
 // Assume no input line will be longer than 1024 bytes
 #define MAX_INPUT 1024
 #define MAX_PATH_LEN 4096
+#define MAX_PARAMS 1000
 #define pathGLBL getenv("PATH")
+#define HOME getenv("HOME")
 
 struct stat filestat;
 
@@ -20,7 +22,7 @@ int main(int argc, char ** argv, char **envp)
 {
   int finished = 0;
   char *prompt = "thsh> ";
-  char cmd[MAX_INPUT];
+  char input[MAX_INPUT];
   char* pwd = getenv("PWD");
 
   while (!finished) 
@@ -41,7 +43,7 @@ int main(int argc, char ** argv, char **envp)
     }
     
     // read and parse the input
-    for(rv = 1, count = 0, cursor = cmd, last_char = 1; rv && (++count < (MAX_INPUT-1)) && (last_char != '\n'); cursor++) 
+    for(rv = 1, count = 0, cursor = input, last_char = 1; rv && (++count < (MAX_INPUT-1)) && (last_char != '\n'); cursor++) 
     { 
       rv = read(0, cursor, 1);
       last_char = *cursor;
@@ -57,7 +59,26 @@ int main(int argc, char ** argv, char **envp)
 
     // Execute the command, handling built-in commands separately 
     // Just echo the command line for now
-    write(1, cmd, strnlen(cmd, MAX_INPUT));
+    write(1, input, strnlen(input, MAX_INPUT));
+    printf("input: %s\n", input);
+
+    char* cmd = strtok(input, " ");
+    printf("CMD: %s\n", cmd);
+
+    char** params = malloc(MAX_PARAMS * sizeof(char*));
+    char* par = strtok(NULL, " ");
+    int i = 0;
+    //loop through the passed in parameters and store the in char** params
+    while(par != NULL)
+    {
+      printf("PARAM: %s\n", par);
+      params[i] = par;
+      par = strtok(NULL, " ");
+      if(par != NULL && par[strlen(par)-1] == '\n')
+        par[strlen(par)-1]='\0';
+      i++;
+    }
+
     checkCmd(cmd);
 
   }
