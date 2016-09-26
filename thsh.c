@@ -1,5 +1,3 @@
-/* COMP 530: Tar Heel SHell */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,11 +12,11 @@
 #define HOME getenv("HOME")
 char* pwd;
 char* lwd;
-
+int debug;
 
 struct stat filestat;
 
-void execute(char* path);
+int execute(char* path, char** params);
 int checkCmd(char* cmd, char** params);
 
 int main(int argc, char ** argv, char **envp) 
@@ -29,6 +27,16 @@ int main(int argc, char ** argv, char **envp)
   pwd = malloc(MAX_PATH_LEN);
   lwd = malloc(MAX_PATH_LEN);
   int i;
+  for(i =0; argv[i]!=NULL; i++)
+  {
+    if(strcmp(argv[i],"-d")==0)
+    {
+      debug =1;
+      fprintf(stderr,"Debug mode on");
+    }
+    else 
+      debug = 0;
+  }
 
   while (!finished) 
   {
@@ -68,15 +76,17 @@ int main(int argc, char ** argv, char **envp)
     // Execute the command, handling built-in commands separately 
     // Just echo the command line for now
     write(1, input, strnlen(input, MAX_INPUT));
-    printf("input: %s\n", input);
+    if(debug)
+      printf("input: %s\n", input);
 
     char* cmd = strtok(input, " ");
-    printf("CMD: %s\n", cmd);
+    if(debug)
+      printf("RUNNING cmd: %s\n", cmd);
 
+    //loop through the passed in parameters and store the in char** params
     char** params = malloc(MAX_PARAMS * sizeof(char*));
     char* par = strtok(NULL, " ");
     i = 0;
-    //loop through the passed in parameters and store the in char** params
     while(par != NULL)
     {
       if(par != NULL && par[strlen(par)-1] == '\n')
@@ -86,12 +96,13 @@ int main(int argc, char ** argv, char **envp)
       i++;
     }
 
-    for(i = 0; params[i] != NULL; i++)
+    if(debug)
     {
-      printf("PARAM: %s\n", params[i]);
+      for(i = 0; params[i] != NULL; i++)
+        printf("PARAM: %s\n", params[i]);
     }
-    checkCmd(cmd, params);
-
+    printf("ENDED: %s (ret=%d)\n", cmd, checkCmd(cmd, params));
+    fflush(stdout);
   }
 
   return 0;
@@ -107,62 +118,74 @@ int checkCmd(char* cmd, char** params)
     exit(3);
   }
 
-  //not finished
+  //if command is cd execute chdir()
   else if(strcmp(cmd, "cd") == 0)
   {
     if(strcmp(params[0], "-") == 0)
-      chdir(lwd);
+      return chdir(lwd);
 
     else
-      chdir(params[0]);
+      return chdir(params[0]);
   }
 
-	//not search path
-	else if(cmd[0] == '\\')
-	{
+  //not search path
+  else if(cmd[0] == '\\')
+  {
     printf("in not search path\n");
-		stat(cmd, &filestat);
-	}
+    stat(cmd, &filestat);
+  }
 
-	//search PATH
-	else 
-	{
-    printf("Global path: %s\n", pathGLBL);
-  	char* path = malloc(strlen(pathGLBL)*sizeof(char));
+  //search PATH
+  else 
+  {
+    char* path = malloc(strlen(pathGLBL)*sizeof(char));
     strcpy(path, pathGLBL);
-    printf("Path: %s\n", path);
-		char* pathI = malloc(MAX_PATH_LEN * sizeof(char));
+    if(debug)
+      printf("Path: %s\n", path);
 
-		//tokenize path along ':' and concantenate '/' and the inputed cmd to it, then check to see if a file at this path exists
-		//if it does call execute on that path
+    char* pathI = malloc(MAX_PATH_LEN * sizeof(char));
+
+    //tokenize path along ':' and concantenate '/' and the inputed cmd to it, then check to see if a file at this path exists
+    //if it does call execute on that path
     char* token = strtok(path, ":");
-		while(token != NULL)
-		{
+    while(token != NULL)
+    {
       sprintf(pathI, "%s/%s", token, cmd);
-      printf("Pathi: %s\n", pathI);
-      printf("Stat: %d\n", stat(pathI, &filestat));
+      if(debug)
+      {
+        printf("Pathi: %s\n", pathI);
+        printf("Stat: %d\n", stat(pathI, &filestat));
+      }
+
       if(stat(pathI, &filestat) == 0)
       {
-        execute(pathI);
+        return execute(pathI, params);
         break;
       }
       token = strtok(NULL, ":");
       pathI[0]='\0';
-		}
+    }
 
     sprintf(pathI, "%s/%s", pwd, cmd);
     if(stat(pathI, &filestat) == 0)
-      execute(pathI);
-	}
+      return execute(pathI, params);
+  }
 }
 
-void execute(char* path)
+int execute(char* path, char** params)
 {
   int status;
   int pid = fork();
   if(pid == 0)
   {
-    status = execl(path, path, (char*) NULL);
+    int i;
+    char* toRun[MAX_PARAMS];
+    toRun[0] = path;
+    for(i = 0; params[i] != NULL; i++)
+    {
+      toRun[i+1]=params[i];
+    }
+    status = execv(path, toRun);
   }
 
   else
@@ -172,8 +195,10 @@ void execute(char* path)
       if(wait(&status >= 0))
         break;
     }
+    return status;
   }
 }
+
 
 
 
