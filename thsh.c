@@ -96,12 +96,14 @@ int main(int argc, char ** argv, char **envp)
       i++;
     }
 
+    int check = checkCmd(cmd, params);
     if(debug)
     {
       for(i = 0; params[i] != NULL; i++)
         printf("PARAM: %s\n", params[i]);
+      printf("ENDED: %s (ret=%d)\n", cmd, check);
     }
-    printf("ENDED: %s (ret=%d)\n", cmd, checkCmd(cmd, params));
+
     fflush(stdout);
   }
 
@@ -121,8 +123,22 @@ int checkCmd(char* cmd, char** params)
   //if command is cd execute chdir()
   else if(strcmp(cmd, "cd") == 0)
   {
-    if(strcmp(params[0], "-") == 0)
+    if(params[0] == NULL)
+      return chdir(getenv("HOME"));
+
+    else if(strcmp(params[0], "-") == 0)
       return chdir(lwd);
+
+    else if(params[0][0] == '~')
+    {
+      char* noTil = malloc(strlen(params[0])*sizeof(char));
+      char*newPath = malloc((strlen(params[0])+strlen(getenv("HOME")))*sizeof(char));
+      params[0]++;
+      memcpy(noTil, (params[0] + sizeof(char)), strlen(params[0]));
+      sprintf(newPath, "%s%s", getenv("HOME"), params[0]);
+      return chdir(newPath);
+    }
+
 
     else
       return chdir(params[0]);
