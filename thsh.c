@@ -19,6 +19,7 @@ struct stat filestat;
 
 int execute(char* path, char** params);
 int checkCmd(char* cmd, char** params);
+void printHeel();
 
 int main(int argc, char ** argv, char **envp) 
 {
@@ -173,6 +174,12 @@ int checkCmd(char* cmd, char** params)
     return err;
   }
 
+  else if(strcmp(cmd, "goheels") == 0)
+  {
+    printHeel();
+    return 0;
+  }
+
   //not search path
   else if(cmd[0] == '\\')
   {
@@ -244,6 +251,28 @@ int execute(char* path, char** params)
   }
 }
 
+void printHeel()
+{
+  char* toHeel = malloc(MAX_PATH_LEN*sizeof(char));
+  sprintf(toHeel, "%s/heel.txt", getenv("HOME"));
+  FILE* filePath = fopen(toHeel, "r");
+  
+  if (filePath == NULL)
+    printf("Cannot open file \n");
+
+  else
+  {
+    char c = fgetc(filePath);
+    while (c != EOF)
+    {
+      printf ("%c", c);
+      fflush(stdout);
+      c = fgetc(filePath);
+    }
+  }
+ 
+  fclose(filePath);                                                                                                                                                                                                                                                                          
+}
 
 
 
