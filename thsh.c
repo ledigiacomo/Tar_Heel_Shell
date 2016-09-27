@@ -12,6 +12,7 @@
 #define HOME getenv("HOME")
 char* pwd;
 char* lwd;
+char* token;
 int debug;
 
 struct stat filestat;
@@ -83,7 +84,7 @@ int main(int argc, char ** argv, char **envp)
     if(debug)
       printf("RUNNING cmd: %s\n", cmd);
 
-    //loop through the passed in parameters and store the in char** params
+    //loop through the passed in parameters and store them in char** params
     char** params = malloc(MAX_PARAMS * sizeof(char*));
     char* par = strtok(NULL, " ");
     i = 0;
@@ -91,6 +92,16 @@ int main(int argc, char ** argv, char **envp)
     {
       if(par != NULL && par[strlen(par)-1] == '\n')
         par[strlen(par)-1]='\0';
+
+      if(par[0] == '$')
+      {
+        char* parp = malloc(strlen(par)*sizeof(char));
+        memcpy(parp, (par + sizeof(char)), strlen(par));
+        par = getenv(parp);
+        if(par == NULL)
+          sprintf(par, "$%s", parp);
+      }
+
       params[i] = par;
       par = strtok(NULL, " ");
       i++;
@@ -112,36 +123,54 @@ int main(int argc, char ** argv, char **envp)
 
 int checkCmd(char* cmd, char** params)
 {
+  int err;
+
   if(cmd[strlen(cmd)-1] == '\n')
     cmd[strlen(cmd)-1]='\0';
 
+  //if cmd is exit close the program
   if(strcmp(cmd, "exit") == 0)
   {
     exit(3);
+  }
+
+  else if(strcmp(cmd, "set") == 0)
+  {
+
+    char* var = strtok(params[0], "=");
+    char* varSet = strtok(NULL, "=");
+    printf("VAR: %s\n", var);
+    printf("varSet: %s\n", varSet);
+    setenv(var, varSet, 1);
   }
 
   //if command is cd execute chdir()
   else if(strcmp(cmd, "cd") == 0)
   {
     if(params[0] == NULL)
-      return chdir(getenv("HOME"));
+      err = chdir(getenv("HOME"));
 
     else if(strcmp(params[0], "-") == 0)
-      return chdir(lwd);
+      err = chdir(lwd);
 
     else if(params[0][0] == '~')
     {
       char* noTil = malloc(strlen(params[0])*sizeof(char));
-      char*newPath = malloc((strlen(params[0])+strlen(getenv("HOME")))*sizeof(char));
+      char* newPath = malloc((strlen(params[0])+strlen(getenv("HOME")))*sizeof(char));
       params[0]++;
       memcpy(noTil, (params[0] + sizeof(char)), strlen(params[0]));
       sprintf(newPath, "%s%s", getenv("HOME"), params[0]);
-      return chdir(newPath);
+      err = chdir(newPath);
     }
 
 
     else
-      return chdir(params[0]);
+      err = chdir(params[0]);
+
+    if(err != 0)
+        perror("ERROR");
+
+    return err;
   }
 
   //not search path
@@ -163,7 +192,7 @@ int checkCmd(char* cmd, char** params)
 
     //tokenize path along ':' and concantenate '/' and the inputed cmd to it, then check to see if a file at this path exists
     //if it does call execute on that path
-    char* token = strtok(path, ":");
+    token = strtok(path, ":");
     while(token != NULL)
     {
       sprintf(pathI, "%s/%s", token, cmd);
