@@ -140,8 +140,11 @@ int checkCmd(char* cmd, char** params)
 
     char* var = strtok(params[0], "=");
     char* varSet = strtok(NULL, "=");
-    printf("VAR: %s\n", var);
-    printf("varSet: %s\n", varSet);
+    if(debug)
+    {
+      printf("VAR: %s\n", var);
+      printf("varSet: %s\n", varSet);
+    }
     setenv(var, varSet, 1);
   }
 
@@ -221,6 +224,9 @@ int checkCmd(char* cmd, char** params)
     sprintf(pathI, "%s/%s", pwd, cmd);
     if(stat(pathI, &filestat) == 0)
       return execute(pathI, params);
+
+    else 
+      perror("ERROR");
   }
 }
 
@@ -247,6 +253,9 @@ int execute(char* path, char** params)
       if(wait(&status >= 0))
         break;
     }
+    if(status != 0)
+        perror("ERROR");
+
     return status;
   }
 }
@@ -256,7 +265,7 @@ void printHeel()
   char* toHeel = malloc(MAX_PATH_LEN*sizeof(char));
   sprintf(toHeel, "%s/heel.txt", getenv("HOME"));
   FILE* filePath = fopen(toHeel, "r");
-  
+
   if (filePath == NULL)
     printf("Cannot open file \n");
 
