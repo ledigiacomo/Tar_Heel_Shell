@@ -1,8 +1,14 @@
+/**
+  Names: Luke DiGiacomo, Marcus Wallace
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+  #include <fcntl.h>
+
 
 // Assume no input line will be longer than 1024 bytes
 #define MAX_INPUT 1024
@@ -14,8 +20,12 @@ char* pwd;
 char* lwd;
 char* token;
 int debug;
-
+int isredirect =0;
+ int isdirect =0;
+char* filename;
 struct stat filestat;
+int i;
+int goBack = 0;
 
 int execute(char* path, char** params);
 int checkCmd(char* cmd, char** params);
@@ -74,14 +84,42 @@ int main(int argc, char ** argv, char **envp)
       break;
     }
 
-
     // Execute the command, handling built-in commands separately 
     // Just echo the command line for now
     write(1, input, strnlen(input, MAX_INPUT));
-    if(debug)
-      printf("input: %s\n", input);
 
-    char* cmd = strtok(input, " ");
+    //make input pretty by putting whitespace betweeen all special characters
+    char* pretty = malloc(strlen(input)*sizeof(char));
+    char* inputPt = malloc(strlen(input)*sizeof(char));
+    strcpy(inputPt, input);
+
+    while(inputPt[0] != '\n')
+    {
+      if(inputPt[0] == '<' || inputPt[0] == '>' || inputPt[0] == '|' || inputPt[0] == '&' || inputPt[0] == '\n')
+      {
+        fflush(stdout);
+        char* tempOut = malloc((strlen(pretty)+4)*sizeof(char));
+        sprintf(tempOut, "%s %c ", pretty, inputPt[0]);
+        pretty = realloc(tempOut, strlen(tempOut)*sizeof(char));
+      }
+
+      else
+      {
+        char* tempOut = malloc((strlen(pretty)+2)*sizeof(char));
+        sprintf(tempOut, "%s%c", pretty, inputPt[0]);
+        pretty = realloc(tempOut, strlen(tempOut)*sizeof(char));
+      }
+      inputPt++;
+    }
+
+    if(debug)
+      printf("Pretty: %s", pretty);
+
+    //skip over lines with # (Comments)
+    if(input[0] == '#')
+      continue;
+
+    char* cmd = strtok(pretty, " ");
     if(debug)
       printf("RUNNING cmd: %s\n", cmd);
 
@@ -102,6 +140,9 @@ int main(int argc, char ** argv, char **envp)
         if(par == NULL)
           sprintf(par, "$%s", parp);
       }
+
+      else if(strstr(par, "&") != NULL)
+        goBack = 1;
 
       params[i] = par;
       par = strtok(NULL, " ");
@@ -186,8 +227,10 @@ int checkCmd(char* cmd, char** params)
   //not search path
   else if(cmd[0] == '\\')
   {
-    printf("in not search path\n");
-    stat(cmd, &filestat);
+    if(stat(cmd, &filestat) == 0)
+      {
+        return execute(cmd, params);
+      }
   }
 
   //search PATH
@@ -234,17 +277,38 @@ int execute(char* path, char** params)
 {
   int status;
   int pid = fork();
+  int out;
   if(pid == 0)
   {
+        if(isredirect && stat(filename,&filestat) ==-1)
+   {
+    int out=open(filename,O_WRONLY| O_CREAT, 0755); 
+      dup2(out,1); 
+      dup2(1,out);
+      close(out);         
+  }
+  if(isdirect && stat(filename,&filestat) == 0)
+  {
+    int in =open(filename,O_RDONLY, 0755); 
+     dup2(in,0); 
+      dup2(0,in);
+      close(in);  
+  }
+
     int i;
     char* toRun[MAX_PARAMS];
     toRun[0] = path;
     for(i = 0; params[i] != NULL; i++)
     {
       toRun[i+1]=params[i];
+      printf("arg %d: %s\n", i+1, params[i]);
     }
+    //printf("cmd is %s", path);
+      //   if(isredirect) close(out);
     status = execv(path, toRun);
+    
   }
+
 
   else
   {
@@ -253,9 +317,6 @@ int execute(char* path, char** params)
       if(wait(&status >= 0))
         break;
     }
-    if(status != 0)
-        perror("ERROR");
-
     return status;
   }
 }
@@ -283,6 +344,3 @@ void printHeel()
   fclose(filePath);                                                                                                                                                                                                                                                                          
 }
 
-
-
-//fflush(stdout);
