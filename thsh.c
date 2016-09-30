@@ -19,13 +19,14 @@
 char* pwd;
 char* lwd;
 char* token;
-int debug;
+int debug = 0;
 int isredirect =0;
- int isdirect =0;
+int isdirect =0;
 char* filename;
 struct stat filestat;
 int i;
 int goBack = 0;
+int inter = 1;
 
 int execute(char* path, char** params);
 int checkCmd(char* cmd, char** params);
@@ -39,19 +40,29 @@ int main(int argc, char ** argv, char **envp)
   pwd = malloc(MAX_PATH_LEN);
   lwd = malloc(MAX_PATH_LEN);
   int i;
-  for(i =0; argv[i]!=NULL; i++)
+  for(i =1; argv[i]!=NULL; i++)
   {
     if(strcmp(argv[i],"-d")==0)
     {
       debug =1;
       fprintf(stderr,"Debug mode on");
     }
-    else 
-      debug = 0;
+
+    printf("arg[i]: %s\n", argv[i]);
+    if(stat(argv[i], &filestat) == 0)
+    {
+      printf("main file\n");
+      int in = open(argv[i], O_RDONLY);
+      close(0);
+      dup2(in, 0);
+      inter = 0;
+    }
   }
 
   while (!finished) 
   {
+    printf("In main while\n");
+    fflush(stdout);
     char *cursor; 
     char last_char;
     int rv;
@@ -61,9 +72,13 @@ int main(int argc, char ** argv, char **envp)
 
 
     // Print the prompt and pwd
-    char* pwdPrompt = malloc((strlen(pwd)+strlen(prompt)+3)*sizeof(char));
-    sprintf(pwdPrompt, "[%s] %s", pwd, prompt);
-    rv = write(1, pwdPrompt, strlen(pwdPrompt));
+    if(inter)
+    {
+      char* pwdPrompt = malloc((strlen(pwd)+strlen(prompt)+3)*sizeof(char));
+      sprintf(pwdPrompt, "[%s] %s", pwd, prompt);
+      rv = write(1, pwdPrompt, strlen(pwdPrompt));
+    }
+
     if (!rv) 
     { 
       finished = 1;
@@ -86,7 +101,7 @@ int main(int argc, char ** argv, char **envp)
 
     // Execute the command, handling built-in commands separately 
     // Just echo the command line for now
-    write(1, input, strnlen(input, MAX_INPUT));
+    //write(1, input, strnlen(input, MAX_INPUT));
 
     //make input pretty by putting whitespace betweeen all special characters
     char* pretty = malloc(strlen(input)*sizeof(char));
@@ -301,7 +316,8 @@ int execute(char* path, char** params)
     for(i = 0; params[i] != NULL; i++)
     {
       toRun[i+1]=params[i];
-      printf("arg %d: %s\n", i+1, params[i]);
+      if(debug)
+        printf("arg %d: %s\n", i+1, params[i]);
     }
     //printf("cmd is %s", path);
       //   if(isredirect) close(out);
