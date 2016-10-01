@@ -7,8 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
-  #include <fcntl.h>
-
+#include <fcntl.h>
 
 // Assume no input line will be longer than 1024 bytes
 #define MAX_INPUT 1024
@@ -21,8 +20,11 @@ char* lwd;
 char* token;
 int debug = 0;
 int isredirect =0;
+char* outputArr[5];
 int isdirect =0;
-char* filename;
+int isPipe =0;
+char* outputFile;
+char* inputFile;
 struct stat filestat;
 int i;
 int goBack = 0;
@@ -51,7 +53,6 @@ int main(int argc, char ** argv, char **envp)
     printf("arg[i]: %s\n", argv[i]);
     if(stat(argv[i], &filestat) == 0)
     {
-      printf("main file\n");
       int in = open(argv[i], O_RDONLY);
       close(0);
       dup2(in, 0);
@@ -61,8 +62,6 @@ int main(int argc, char ** argv, char **envp)
 
   while (!finished) 
   {
-    printf("In main while\n");
-    fflush(stdout);
     char *cursor; 
     char last_char;
     int rv;
@@ -98,10 +97,6 @@ int main(int argc, char ** argv, char **envp)
       finished = 1;
       break;
     }
-
-    // Execute the command, handling built-in commands separately 
-    // Just echo the command line for now
-    //write(1, input, strnlen(input, MAX_INPUT));
 
     //make input pretty by putting whitespace betweeen all special characters
     char* pretty = malloc(strlen(input)*sizeof(char));
@@ -160,6 +155,9 @@ int main(int argc, char ** argv, char **envp)
         goBack = 1;
 
       params[i] = par;
+      if(strcmp(params[i], "|"))
+        isPipe =1;
+
       par = strtok(NULL, " ");
       i++;
     }
@@ -181,6 +179,41 @@ int main(int argc, char ** argv, char **envp)
 int checkCmd(char* cmd, char** params)
 {
   int err;
+  int count;
+  for(count = 0; params[count] != NULL; count++)
+  {
+  if(strcmp(params[count], "<") == 0)
+    {
+        inputFile = params[count+1];
+      if(params[count+2]==NULL){
+       isdirect =1;
+     
+       params[0] ='\0';
+       params[1] = '\0';
+    }
+    else{
+      int i;
+      inputFile = params[count+1];
+            for(i=count; params[i+2] != NULL; i++)
+          strcpy(params[i], params[i+2]);
+
+        strcpy(params[i], params[i+1]);
+        params[i+1] = '\0';
+        
+      }
+    }
+}
+
+  for(count = 0; params[count] != NULL; count++)
+  {
+    if(strcmp(params[count],">") == 0)
+    {
+      isredirect=1;
+      outputFile = params[count+1];
+      params[count]='\0';
+      params[count+1]= '\0';
+    }
+  }
 
   if(cmd[strlen(cmd)-1] == '\n')
     cmd[strlen(cmd)-1]='\0';
@@ -223,7 +256,6 @@ int checkCmd(char* cmd, char** params)
       err = chdir(newPath);
     }
 
-
     else
       err = chdir(params[0]);
 
@@ -243,9 +275,9 @@ int checkCmd(char* cmd, char** params)
   else if(cmd[0] == '\\')
   {
     if(stat(cmd, &filestat) == 0)
-      {
-        return execute(cmd, params);
-      }
+    {
+      return execute(cmd, params);
+    }
   }
 
   //search PATH
@@ -293,22 +325,23 @@ int execute(char* path, char** params)
   int status;
   int pid = fork();
   int out;
+
   if(pid == 0)
   {
-        if(isredirect && stat(filename,&filestat) ==-1)
-   {
-    int out=open(filename,O_WRONLY| O_CREAT, 0755); 
+    if(isredirect && stat(outputFile,&filestat) ==-1)
+    {
+      int out=open(outputFile,O_WRONLY| O_CREAT, 0755); 
       dup2(out,1); 
       dup2(1,out);
       close(out);         
-  }
-  if(isdirect && stat(filename,&filestat) == 0)
-  {
-    int in =open(filename,O_RDONLY, 0755); 
-     dup2(in,0); 
+    }
+    if(isdirect && stat(inputFile,&filestat) == 0)
+    {
+      int in = open(inputFile,O_RDONLY, 0755); 
+      dup2(in,0); 
       dup2(0,in);
       close(in);  
-  }
+    }
 
     int i;
     char* toRun[MAX_PARAMS];
