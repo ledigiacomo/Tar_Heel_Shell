@@ -44,7 +44,25 @@ Basic Operation
 		it goes through the file character by character and prints wht is read 
 		stdout.
 
+Built-in Commands
+=================
+	cd [path]
+		changes the current directory to path
+			path = '' will change to $HOME
+			path = '-' will change to last directory
+
+	set Variable=Value
+		will create a new environment variable called the contents of Variable
+		with the value of the contents of Value
+
+	exit
+		terminates the shell
+
+	goheels
+		prints an ascii-art picture of a Tar Heel
+
 Known Bugs
 ==========
 	1. this shell does not currently support job control.  
 	2. Pipes are also not fully supported. Use at your own risk
+	3. This shell does not support "" to distinguish filenames with whitespace
